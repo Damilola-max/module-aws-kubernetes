@@ -1,11 +1,13 @@
 provider "aws" {
   region = var.aws_region
-
-# Cluster management policy
 }
+
+# Define cluster name
 locals {
   cluster_name = "${var.cluster_name}-${var.env_name}"
 }
+
+# Cluster IAM Role
 resource "aws_iam_role" "ms-cluster" {
   name = local.cluster_name
   assume_role_policy = <<POLICY
@@ -19,45 +21,49 @@ resource "aws_iam_role" "ms-cluster" {
       },
       "Action": "sts:AssumeRole"
     }
-] 
+  ]
 }
-POLICY }
+POLICY
+}
+
 resource "aws_iam_role_policy_attachment" "ms-cluster-AmazonEKSClusterPolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.ms-cluster.name
 }
 
-# network security policy
+# Network Security Group
 resource "aws_security_group" "ms-cluster" {
-name  = local.cluster
-vpc_id  = var.vpc_id
+  name   = local.cluster_name
+  vpc_id = var.vpc_id
 
- egress {
-    from_port    = 0
-    to_port      = 0
-    protocol     = "1"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-}
- tags = {
+  }
+
+  tags = {
     Name = "ms-up-running"
-} 
+  }
 }
 
-# Cluster definition 
-
+# EKS Cluster
 resource "aws_eks_cluster" "ms-up-running" {
   name     = local.cluster_name
   role_arn = aws_iam_role.ms-cluster.arn
+
   vpc_config {
     security_group_ids = [aws_security_group.ms-cluster.id]
     subnet_ids         = var.cluster_subnet_ids
-}
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.ms-cluster-AmazonEKSClusterPolicy
-] 
+  ]
 }
 
-# Node Role
+# Node IAM Role
 resource "aws_iam_role" "ms-node" {
   name = "${local.cluster_name}.node"
   assume_role_policy = <<POLICY
@@ -71,56 +77,57 @@ resource "aws_iam_role" "ms-node" {
       },
       "Action": "sts:AssumeRole"
     }
-] }
-POLICY }
-# Node Policy
+  ]
+}
+POLICY
+}
+
+# Attach Policies to Node IAM Role
 resource "aws_iam_role_policy_attachment" "ms-node-AmazonEKSWorkerNodePolicy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
   role       = aws_iam_role.ms-node.name
 }
+
 resource "aws_iam_role_policy_attachment" "ms-node-AmazonEKS_CNI_Policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
   role       = aws_iam_role.ms-node.name
 }
-[...]
+
 resource "aws_iam_role_policy_attachment" "ms-node-ContainerRegistryReadOnly" {
-[...]
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   role       = aws_iam_role.ms-node.name
 }
 
-# node group
-
+# EKS Node Group
 resource "aws_eks_node_group" "ms-node-group" {
   cluster_name    = aws_eks_cluster.ms-up-running.name
   node_group_name = "microservices"
   node_role_arn   = aws_iam_role.ms-node.arn
   subnet_ids      = var.nodegroup_subnet_ids
+
   scaling_config {
     desired_size = var.nodegroup_desired_size
-}
-max_size
-min_size
-= var.nodegroup_max_size
-= var.nodegroup_min_size
-= var.nodegroup_disk_size
-disk_size
-instance_types = var.nodegroup_instance_types
+    max_size     = var.nodegroup_max_size
+    min_size     = var.nodegroup_min_size
+  }
+
+  disk_size      = var.nodegroup_disk_size
+  instance_types = var.nodegroup_instance_types
+
   depends_on = [
     aws_iam_role_policy_attachment.ms-node-AmazonEKSWorkerNodePolicy,
     aws_iam_role_policy_attachment.ms-node-AmazonEKS_CNI_Policy,
-    aws_iam_role_policy_attachment.ms-node-AmazonEC2ContainerRegistryReadOnly,
-] 
+    aws_iam_role_policy_attachment.ms-node-ContainerRegistryReadOnly,
+  ]
 }
 
-# Create a kubeconfig file based on the cluster that has been created
+# Kubeconfig Local File
 resource "local_file" "kubeconfig" {
   content  = <<KUBECONFIG_END
 apiVersion: v1
 clusters:
 - cluster:
-    "certificate-authority-data: >
-   ${aws_eks_cluster.ms-up-running.certificate_authority.0.data}"
+    certificate-authority-data: ${aws_eks_cluster.ms-up-running.certificate_authority.0.data}
     server: ${aws_eks_cluster.ms-up-running.endpoint}
   name: ${aws_eks_cluster.ms-up-running.arn}
 contexts:
@@ -141,6 +148,6 @@ users:
         - "token"
         - "-i"
         - "${aws_eks_cluster.ms-up-running.name}"
-    KUBECONFIG_END
+KUBECONFIG_END
   filename = "kubeconfig"
 }
