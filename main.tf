@@ -4,14 +4,12 @@ provider "aws" {
 
 # Define a sanitized cluster name
 locals {
-  # Replace spaces with hyphens and remove dots for a valid name
-  cluster_name = replace(replace("${var.cluster_name}-${var.env_name}", " ", "-"), ".", "-")
+  cluster_name = replace("${var.cluster_name}-${var.env_name}", " ", "-")
 }
 
 # Cluster IAM Role
 resource "aws_iam_role" "ms-cluster" {
-  # Sanitize the role name
-  name               = local.cluster_name
+  name               = replace(local.cluster_name, ".", "-")
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -35,8 +33,7 @@ resource "aws_iam_role_policy_attachment" "ms-cluster-AmazonEKSClusterPolicy" {
 
 # Network Security Group
 resource "aws_security_group" "ms-cluster" {
-  # Use a valid name format
-  name   = local.cluster_name
+  name   = replace(local.cluster_name, ".", "-")
   vpc_id = var.vpc_id
 
   egress {
@@ -53,8 +50,7 @@ resource "aws_security_group" "ms-cluster" {
 
 # EKS Cluster
 resource "aws_eks_cluster" "ms-up-running" {
-  # Ensure cluster name is valid
-  name     = local.cluster_name
+  name     = replace(local.cluster_name, ".", "-")
   role_arn = aws_iam_role.ms-cluster.arn
 
   vpc_config {
@@ -69,8 +65,7 @@ resource "aws_eks_cluster" "ms-up-running" {
 
 # Node IAM Role
 resource "aws_iam_role" "ms-node" {
-  # Append `-node` for clarity and ensure it is valid
-  name               = "${local.cluster_name}-node"
+  name               = "${replace(local.cluster_name, ".", "-")}.node"
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -105,8 +100,7 @@ resource "aws_iam_role_policy_attachment" "ms-node-ContainerRegistryReadOnly" {
 
 # EKS Node Group
 resource "aws_eks_node_group" "ms-node-group" {
-  # Ensure cluster name conforms to standards
-  cluster_name    = local.cluster_name
+  cluster_name    = replace(local.cluster_name, ".", "-")
   node_group_name = "microservices"
   node_role_arn   = aws_iam_role.ms-node.arn
   subnet_ids      = var.nodegroup_subnet_ids
@@ -129,7 +123,6 @@ resource "aws_eks_node_group" "ms-node-group" {
 
 # Kubeconfig Local File
 resource "local_file" "kubeconfig" {
-  # Generate kubeconfig with valid cluster name
   content  = <<KUBECONFIG_END
 apiVersion: v1
 clusters:
