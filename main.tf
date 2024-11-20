@@ -2,14 +2,14 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Define cluster name
+# Define a sanitized cluster name
 locals {
-  cluster_name = "${var.cluster_name}-${var.env_name}"
+  cluster_name = replace("${var.cluster_name}-${var.env_name}", " ", "-")
 }
 
 # Cluster IAM Role
 resource "aws_iam_role" "ms-cluster" {
-  name               = local.cluster_name
+  name               = replace(local.cluster_name, ".", "-")
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -33,7 +33,7 @@ resource "aws_iam_role_policy_attachment" "ms-cluster-AmazonEKSClusterPolicy" {
 
 # Network Security Group
 resource "aws_security_group" "ms-cluster" {
-  name   = local.cluster_name
+  name   = replace(local.cluster_name, ".", "-")
   vpc_id = var.vpc_id
 
   egress {
@@ -50,7 +50,7 @@ resource "aws_security_group" "ms-cluster" {
 
 # EKS Cluster
 resource "aws_eks_cluster" "ms-up-running" {
-  name     = local.cluster_name
+  name     = replace(local.cluster_name, ".", "-")
   role_arn = aws_iam_role.ms-cluster.arn
 
   vpc_config {
@@ -65,7 +65,7 @@ resource "aws_eks_cluster" "ms-up-running" {
 
 # Node IAM Role
 resource "aws_iam_role" "ms-node" {
-  name               = "${local.cluster_name}.node"
+  name               = "${replace(local.cluster_name, ".", "-")}.node"
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -100,7 +100,7 @@ resource "aws_iam_role_policy_attachment" "ms-node-ContainerRegistryReadOnly" {
 
 # EKS Node Group
 resource "aws_eks_node_group" "ms-node-group" {
-  cluster_name    = aws_eks_cluster.ms-up-running.name
+  cluster_name    = replace(local.cluster_name, ".", "-")
   node_group_name = "microservices"
   node_role_arn   = aws_iam_role.ms-node.arn
   subnet_ids      = var.nodegroup_subnet_ids
