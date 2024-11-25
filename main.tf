@@ -33,7 +33,7 @@ resource "aws_iam_role_policy_attachment" "ms-cluster-AmazonEKSClusterPolicy" {
 
 # Network Security Group
 resource "aws_security_group" "ms-cluster" {
-  name   = replace(local.cluster_name, ".", "-")
+  name = "damilola-k8s-cluster"
   vpc_id = var.vpc_id
 
   egress {
@@ -50,7 +50,7 @@ resource "aws_security_group" "ms-cluster" {
 
 # EKS Cluster
 resource "aws_eks_cluster" "ms-up-running" {
-  name     = replace(local.cluster_name, ".", "-")
+  name = "damilola-k8s-cluster"
   role_arn = aws_iam_role.ms-cluster.arn
 
   vpc_config {
@@ -100,7 +100,7 @@ resource "aws_iam_role_policy_attachment" "ms-node-ContainerRegistryReadOnly" {
 
 # EKS Node Group
 resource "aws_eks_node_group" "ms-node-group" {
-  cluster_name    = replace(local.cluster_name, ".", "-")
+  cluster_name    = "damilola-k8s-cluster"
   node_group_name = "microservices"
   node_role_arn   = aws_iam_role.ms-node.arn
   subnet_ids      = var.nodegroup_subnet_ids
