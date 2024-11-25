@@ -9,7 +9,7 @@ locals {
 
 # Cluster IAM Role
 resource "aws_iam_role" "ms-cluster" {
-  name               = "${local.cluster_name}-node"
+ name = "damilola-k8s-cluster-node"
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
@@ -65,7 +65,11 @@ resource "aws_eks_cluster" "ms-up-running" {
 
 # Node IAM Role
 resource "aws_iam_role" "ms-node" {
+<<<<<<< HEAD
   name               = "${local.cluster_name}-node"
+=======
+  name = "damilola-k8s-node"
+>>>>>>> cded62ad6f1998aa242164aec2db26db2eee8e45
   assume_role_policy = <<POLICY
 {
   "Version": "2012-10-17",
