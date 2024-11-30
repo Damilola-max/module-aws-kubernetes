@@ -100,7 +100,7 @@ resource "aws_iam_role_policy_attachment" "ms-node-ContainerRegistryReadOnly" {
 
 # EKS Node Group
 resource "aws_eks_node_group" "ms-node-group" {
-  cluster_name    = "aws_eks_cluster.ms-up-running.name"
+  cluster_name    = aws_eks_cluster.ms-up-running.name
   node_group_name = "microservices"
   node_role_arn   = aws_iam_role.ms-node.arn
   subnet_ids      = var.nodegroup_subnet_ids
